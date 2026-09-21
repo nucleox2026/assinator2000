@@ -60,7 +60,11 @@ CREATE TABLE IF NOT EXISTS dispositivos (
 
     criado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    atualizado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    atualizado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    tentativas_ativacao INTEGER NOT NULL DEFAULT 0,
+
+    bloqueado_ate TEXT
 );
 
 

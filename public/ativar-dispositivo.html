@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Ativar tablet | Assinator2000
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="css/style.css"
+    >
+
+</head>
+
+
+<body>
+
+    <main class="pagina-login">
+
+        <section class="painel-login">
+
+            <div class="marca">
+
+                <div class="marca-icone">
+                    A2K
+                </div>
+
+                <div>
+
+                    <h1>
+                        Assinator2000
+                    </h1>
+
+                    <p>
+                        Configuração do equipamento
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="conteudo-login">
+
+                <div class="cabecalho-login">
+
+                    <span class="etiqueta">
+                        Tablet corporativo
+                    </span>
+
+                    <h2>
+                        Ativar dispositivo
+                    </h2>
+
+                    <p>
+                        Informe o código do equipamento e
+                        o código temporário fornecido pelo TI.
+                    </p>
+
+                </div>
+
+
+                <form
+                    id="formDispositivo"
+                    class="form-login"
+                    novalidate
+                >
+
+                    <div class="campo">
+
+                        <label for="codigoDispositivo">
+                            Código do dispositivo
+                        </label>
+
+                        <input
+                            id="codigoDispositivo"
+                            type="text"
+                            placeholder="TAB-RH-001"
+                            autocomplete="off"
+                            autocapitalize="characters"
+                            spellcheck="false"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="campo">
+
+                        <label for="codigoAtivacao">
+                            Código temporário
+                        </label>
+
+                        <input
+                            id="codigoAtivacao"
+                            type="password"
+                            placeholder="8 dígitos"
+                            inputmode="numeric"
+                            maxlength="8"
+                            autocomplete="one-time-code"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div
+                        id="mensagem"
+                        class="mensagem"
+                        role="alert"
+                        aria-live="polite"
+                    ></div>
+
+
+                    <button
+                        id="botaoAtivar"
+                        class="botao-entrar"
+                        type="submit"
+                    >
+                        Ativar este tablet
+                    </button>
+
+                </form>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <script src="js/ativar-dispositivo.js"></script>
+
+</body>
+
+</html>
