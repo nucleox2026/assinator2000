@@ -140,6 +140,8 @@ formLogin.addEventListener(
                 "sucesso"
             );
 
+            window.location.href =
+                "/dashboard.html";
 
             campoSenha.value = "";
 

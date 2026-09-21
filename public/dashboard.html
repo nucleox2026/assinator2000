@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Painel do colaborador - Assinator2000."
+    >
+
+    <title>Dashboard | Assinator2000</title>
+
+    <link
+        rel="stylesheet"
+        href="css/dashboard.css"
+    >
+</head>
+
+<body>
+
+    <!--
+        Aparece enquanto verificamos
+        se existe uma sessão válida.
+    -->
+    <div
+        id="estadoCarregando"
+        class="estado-carregando"
+    >
+        <div class="spinner"></div>
+
+        <p>
+            Verificando acesso...
+        </p>
+    </div>
+
+
+    <!--
+        Fica escondido até o backend
+        confirmar a sessão.
+    -->
+    <div
+        id="appDashboard"
+        class="app-dashboard"
+        hidden
+    >
+
+        <header class="cabecalho">
+
+            <div class="marca">
+
+                <div class="marca-icone">
+                    A2K
+                </div>
+
+                <div>
+                    <strong>
+                        Assinator2000
+                    </strong>
+
+                    <span>
+                        Portal de assinatura eletrônica
+                    </span>
+                </div>
+
+            </div>
+
+
+            <div class="usuario-area">
+
+                <div class="usuario-dados">
+
+                    <strong id="nomeUsuario">
+                        -
+                    </strong>
+
+                    <span id="setorUsuario">
+                        -
+                    </span>
+
+                </div>
+
+
+                <button
+                    id="botaoSair"
+                    class="botao-sair"
+                    type="button"
+                >
+                    Sair
+                </button>
+
+            </div>
+
+        </header>
+
+
+        <main class="conteudo">
+
+            <section class="boas-vindas">
+
+                <span class="etiqueta">
+                    Área do colaborador
+                </span>
+
+                <h1 id="tituloBoasVindas">
+                    Olá
+                </h1>
+
+                <p>
+                    Consulte abaixo os documentos
+                    disponíveis para leitura e assinatura.
+                </p>
+
+            </section>
+
+
+            <section class="resumo">
+
+                <article class="resumo-card">
+
+                    <span>
+                        Pendentes
+                    </span>
+
+                    <strong id="quantidadePendentes">
+                        0
+                    </strong>
+
+                </article>
+
+
+                <article class="resumo-card">
+
+                    <span>
+                        Assinados
+                    </span>
+
+                    <strong id="quantidadeAssinados">
+                        0
+                    </strong>
+
+                </article>
+
+            </section>
+
+
+            <section class="documentos">
+
+                <div class="titulo-secao">
+
+                    <div>
+
+                        <h2>
+                            Documentos pendentes
+                        </h2>
+
+                        <p>
+                            Termos que aguardam sua leitura e assinatura.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="listaDocumentos"
+                    class="lista-documentos"
+                >
+
+                    <div class="estado-vazio">
+
+                        <div class="estado-vazio-icone">
+                            ✓
+                        </div>
+
+                        <h3>
+                            Nenhum documento carregado
+                        </h3>
+
+                        <p>
+                            O módulo de documentos será
+                            conectado na próxima etapa.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+        </main>
+
+
+        <footer class="rodape">
+
+            <span>
+                Assinator2000
+            </span>
+
+            <span>
+                Versão 0.1.0
+            </span>
+
+        </footer>
+
+    </div>
+
+
+    <script src="js/dashboard.js"></script>
+
+</body>
+
+</html>
