@@ -34,6 +34,39 @@ CREATE TABLE IF NOT EXISTS usuarios (
     atualizado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS dispositivos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    codigo TEXT NOT NULL UNIQUE COLLATE NOCASE,
+
+    nome TEXT NOT NULL,
+
+    local TEXT,
+
+    token_hash TEXT UNIQUE,
+
+    ativacao_hash TEXT,
+
+    ativacao_salt TEXT,
+
+    ativacao_expira_em TEXT,
+
+    ativo INTEGER NOT NULL DEFAULT 1
+        CHECK (ativo IN (0, 1)),
+
+    ativado_em TEXT,
+
+    ultimo_acesso_em TEXT,
+
+    criado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    atualizado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE INDEX IF NOT EXISTS idx_dispositivos_codigo
+ON dispositivos(codigo);
+
 CREATE INDEX IF NOT EXISTS idx_usuarios_usuario
 ON usuarios (usuario);
 
@@ -57,6 +90,9 @@ CREATE TABLE IF NOT EXISTS sessoes (
     FOREIGN KEY (usuario_id)
         REFERENCES usuarios(id)
         ON DELETE CASCADE
+
+    FOREIGN KEY (dispositivo_id)
+        REFERENCES dispositivos(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessoes_token_hash
