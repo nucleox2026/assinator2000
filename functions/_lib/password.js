@@ -10,6 +10,18 @@ function bytesParaBase64(bytes) {
     return btoa(texto);
 }
 
+function base64ParaBytes(base64) {
+    const texto = atob(base64);
+
+    const bytes = new Uint8Array(texto.length);
+
+    for (let i = 0; i < texto.length; i++) {
+        bytes[i] = texto.charCodeAt(i);
+    }
+
+    return bytes;
+}
+
 async function aplicarPepper(senha, pepper) {
     const encoder = new TextEncoder();
 
@@ -68,3 +80,55 @@ export async function gerarHashSenha(senha, pepper) {
         salt: bytesParaBase64(salt)
     };
 }
+
+export async function verificarSenha(
+        senha,
+        saltBase64,
+        hashEsperadoBase64,
+        pepper
+    ) {
+
+        const salt = base64ParaBytes(saltBase64);
+
+        const senhaProtegida = await aplicarPepper(
+            senha,
+            pepper
+        );
+
+        const chave = await crypto.subtle.importKey(
+            "raw",
+            senhaProtegida,
+            "PBKDF2",
+            false,
+            ["deriveBits"]
+        );
+
+        const hashCalculado = await crypto.subtle.deriveBits(
+            {
+                name: "PBKDF2",
+                salt,
+                iterations: ITERACOES_PBKDF2,
+                hash: "SHA-256"
+            },
+            chave,
+            256
+        );
+
+        const calculado = new Uint8Array(hashCalculado);
+
+        const esperado = base64ParaBytes(
+            hashEsperadoBase64
+        );
+
+        if (calculado.length !== esperado.length) {
+            return false;
+        }
+
+        let diferenca = 0;
+
+        for (let i = 0; i < calculado.length; i++) {
+            diferenca |= calculado[i] ^ esperado [i];
+        }
+
+        return diferenca === 0;
+    }
