@@ -89,6 +89,7 @@ export async function onRequestPost(context) {
                         setor,
                         perfil,
                         ativo,
+                        credencial_ativada,
                         tentativas_falhas,
                         bloqueado_ate
                     FROM usuarios
@@ -104,14 +105,14 @@ export async function onRequestPost(context) {
          * Não informamos se o usuário existe ou não.
          */
 
-        if (!colaborador || colaborador.ativo !== 1) {
+        if (colaborador.credencial_ativada !== 1) {
 
             return respostaJson(
                 {
                     sucesso: false,
                     mensagem: "Usuário ou senha inválidos."
                 },
-                401
+                403
             );
         }
 

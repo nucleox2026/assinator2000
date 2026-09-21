@@ -1,39 +1,31 @@
-import { gerarHashSenha } from "../../_lib/password.js";
+import {
+    gerarHashSenha
+} from "../../_lib/password.js";
 
 
-function respostaJson(dados, status = 200) {
+import {
+    gerarCodigoAtivacao
+} from "../../_lib/activation.js";
+
+
+const HORAS_VALIDADE_ATIVACAO = 24;
+
+
+function respostaJson(
+    dados,
+    status = 200
+) {
+
     return new Response(
         JSON.stringify(dados),
         {
             status,
+
             headers: {
-                "Content-Type": "application/json; charset=UTF-8"
+                "Content-Type":
+                    "application/json; charset=UTF-8"
             }
         }
-    );
-}
-
-
-function dataNascimentoValida(senha) {
-
-    if (!/^\d{8}$/.test(senha)) {
-        return false;
-    }
-
-    const dia = Number(senha.slice(0, 2));
-    const mes = Number(senha.slice(2, 4));
-    const ano = Number(senha.slice(4, 8));
-
-    const data = new Date(
-        ano,
-        mes - 1,
-        dia
-    );
-
-    return (
-        data.getFullYear() === ano &&
-        data.getMonth() === mes - 1 &&
-        data.getDate() === dia
     );
 }
 
@@ -43,21 +35,26 @@ export async function onRequestPost(context) {
     try {
 
         /*
-         * 1. Verifica a chave administrativa.
+         * 1. Proteção temporária da rota administrativa.
          */
 
         const chaveRecebida =
-            context.request.headers.get("X-Admin-Key");
+            context.request.headers.get(
+                "X-Admin-Key"
+            );
+
 
         if (
             !chaveRecebida ||
-            chaveRecebida !== context.env.BOOTSTRAP_ADMIN_KEY
+            chaveRecebida !==
+                context.env.BOOTSTRAP_ADMIN_KEY
         ) {
 
             return respostaJson(
                 {
                     sucesso: false,
-                    mensagem: "Não autorizado."
+                    mensagem:
+                        "Não autorizado."
                 },
                 401
             );
@@ -65,36 +62,50 @@ export async function onRequestPost(context) {
 
 
         /*
-         * 2. Lê os dados enviados.
+         * 2. Dados fornecidos pelo administrador.
+         *
+         * Observe que NÃO recebemos senha.
          */
 
-        const dados = await context.request.json();
+        const dados =
+            await context.request.json();
+
 
         const nome =
-            String(dados.nome || "").trim();
+            String(
+                dados.nome || ""
+            ).trim();
+
 
         const usuario =
-            String(dados.usuario || "")
+            String(
+                dados.usuario || ""
+            )
                 .trim()
                 .toLowerCase();
 
-        const senha =
-            String(dados.senha || "").trim();
 
         const setor =
-            String(dados.setor || "").trim();
+            String(
+                dados.setor || ""
+            ).trim();
 
 
         /*
-         * 3. Valida campos obrigatórios.
+         * 3. Campos obrigatórios.
          */
 
-        if (!nome || !usuario || !senha || !setor) {
+        if (
+            !nome ||
+            !usuario ||
+            !setor
+        ) {
 
             return respostaJson(
                 {
                     sucesso: false,
-                    mensagem: "Preencha todos os campos."
+                    mensagem:
+                        "Preencha nome, usuário e setor."
                 },
                 400
             );
@@ -102,11 +113,13 @@ export async function onRequestPost(context) {
 
 
         /*
-         * 4. Valida o padrão nome.sobrenome
+         * 4. Validação de nome.sobrenome.
          */
 
         const usuarioValido =
-            /^[a-z0-9]+(?:\.[a-z0-9]+)+$/.test(usuario);
+            /^[a-z0-9]+(?:\.[a-z0-9]+)+$/
+                .test(usuario);
+
 
         if (!usuarioValido) {
 
@@ -122,27 +135,10 @@ export async function onRequestPost(context) {
 
 
         /*
-         * 5. A senha deve ser uma data válida DDMMAAAA.
+         * 5. Impede usuário duplicado.
          */
 
-        if (!dataNascimentoValida(senha)) {
-
-            return respostaJson(
-                {
-                    sucesso: false,
-                    mensagem:
-                        "A senha deve ser uma data válida no formato DDMMAAAA."
-                },
-                400
-            );
-        }
-
-
-        /*
-         * 6. Verifica se o usuário já existe.
-         */
-
-        const usuarioExistente =
+        const existente =
             await context.env.DB
                 .prepare(
                     `
@@ -156,12 +152,13 @@ export async function onRequestPost(context) {
                 .first();
 
 
-        if (usuarioExistente) {
+        if (existente) {
 
             return respostaJson(
                 {
                     sucesso: false,
-                    mensagem: "Usuário já cadastrado."
+                    mensagem:
+                        "Usuário já cadastrado."
                 },
                 409
             );
@@ -169,18 +166,48 @@ export async function onRequestPost(context) {
 
 
         /*
-         * 7. Transforma a senha em hash.
+         * 6. Gera código temporário.
          */
 
-        const senhaProtegida =
+        const codigoAtivacao =
+            gerarCodigoAtivacao();
+
+
+        /*
+         * Nunca gravamos o código original.
+         *
+         * Gravamos somente hash + salt.
+         */
+
+        const codigoProtegido =
             await gerarHashSenha(
-                senha,
+                codigoAtivacao,
                 context.env.APP_PEPPER
             );
 
 
         /*
-         * 8. Insere o usuário no D1.
+         * 7. Define expiração.
+         */
+
+        const expiraEm =
+            new Date(
+                Date.now() +
+                HORAS_VALIDADE_ATIVACAO *
+                60 *
+                60 *
+                1000
+            ).toISOString();
+
+
+        /*
+         * 8. Cria o colaborador.
+         *
+         * Neste momento senha_hash contém
+         * o HASH DO CÓDIGO TEMPORÁRIO.
+         *
+         * Depois da ativação será substituído
+         * pelo hash do PIN pessoal.
          */
 
         const resultado =
@@ -194,8 +221,11 @@ export async function onRequestPost(context) {
                         senha_salt,
                         setor,
                         perfil,
-                        ativo
+                        ativo,
+                        credencial_ativada,
+                        ativacao_expira_em
                     )
+
                     VALUES (
                         ?1,
                         ?2,
@@ -203,22 +233,63 @@ export async function onRequestPost(context) {
                         ?4,
                         ?5,
                         'COLABORADOR',
-                        1
+                        1,
+                        0,
+                        ?6
                     )
                     `
                 )
                 .bind(
                     nome,
                     usuario,
-                    senhaProtegida.hash,
-                    senhaProtegida.salt,
-                    setor
+                    codigoProtegido.hash,
+                    codigoProtegido.salt,
+                    setor,
+                    expiraEm
                 )
                 .run();
 
 
+        const usuarioId =
+            resultado.meta.last_row_id;
+
+
         /*
-         * 9. Retorna somente dados não sensíveis.
+         * 9. Cria identificador funcional
+         * interno e permanente.
+         */
+
+        const codigoFuncional =
+            `COL-${String(usuarioId)
+                .padStart(6, "0")}`;
+
+
+        await context.env.DB
+            .prepare(
+                `
+                UPDATE usuarios
+
+                SET
+                    codigo_funcional = ?1,
+                    atualizado_em =
+                        CURRENT_TIMESTAMP
+
+                WHERE id = ?2
+                `
+            )
+            .bind(
+                codigoFuncional,
+                usuarioId
+            )
+            .run();
+
+
+        /*
+         * 10. O código temporário aparece
+         * UMA VEZ nesta resposta.
+         *
+         * Como o banco possui somente o hash,
+         * não conseguiremos recuperá-lo depois.
          */
 
         return respostaJson(
@@ -226,28 +297,42 @@ export async function onRequestPost(context) {
                 sucesso: true,
 
                 mensagem:
-                    "Usuário cadastrado com sucesso.",
+                    "Colaborador cadastrado. Entregue o código de ativação ao colaborador.",
 
                 usuario: {
-                    id: resultado.meta.last_row_id,
+                    id: usuarioId,
+                    codigoFuncional,
                     nome,
                     usuario,
                     setor,
-                    perfil: "COLABORADOR"
+                    perfil:
+                        "COLABORADOR"
+                },
+
+                ativacao: {
+                    codigo:
+                        codigoAtivacao,
+
+                    expiraEm
                 }
             },
             201
         );
 
+
     } catch (erro) {
 
-        console.error("Erro ao criar usuário:", erro);
+        console.error(
+            "Erro ao criar usuário:",
+            erro
+        );
+
 
         return respostaJson(
             {
                 sucesso: false,
                 mensagem:
-                    "Não foi possível cadastrar o usuário."
+                    "Não foi possível cadastrar o colaborador."
             },
             500
         );
