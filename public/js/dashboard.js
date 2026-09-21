@@ -28,6 +28,21 @@ const botaoSair =
         "botaoSair"
     );
 
+const quantidadePendentes =
+    document.getElementById(
+        "quantidadePendentes"
+    );
+
+const quantidadeAssinados =
+    document.getElementById(
+        "quantidadeAssinados"
+    );
+
+const listaDocumentos =
+    document.getElementById(
+        "listaDocumentos"
+    );
+
 
 async function verificarSessao() {
 
@@ -74,6 +89,7 @@ async function verificarSessao() {
             dados.usuario
         );
 
+        await carregarDocumentos();
 
         /*
          * Somente agora mostramos
@@ -136,6 +152,207 @@ function carregarUsuario(usuario) {
         `Olá, ${primeiroNome}`;
 }
 
+async function carregarDocumentos() {
+
+    try {
+
+        const resposta =
+            await fetch(
+                "/api/documentos/pendentes",
+                {
+                    method: "GET",
+
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
+                }
+            );
+
+
+        if (resposta.status === 401) {
+
+            window.location.replace("/");
+
+            return;
+        }
+
+
+        const dados =
+            await resposta.json();
+
+
+        if (!resposta.ok) {
+
+            throw new Error(
+                dados.mensagem ||
+                "Erro ao carregar documentos."
+            );
+        }
+
+
+        quantidadePendentes.textContent =
+            dados.resumo.pendentes;
+
+        quantidadeAssinados.textContent =
+            dados.resumo.assinados;
+
+
+        renderizarDocumentos(
+            dados.documentos
+        );
+
+
+    } catch (erro) {
+
+        console.error(
+            "Erro ao carregar documentos:",
+            erro
+        );
+
+
+        listaDocumentos.textContent =
+            "Não foi possível carregar os documentos.";
+
+    }
+
+}
+
+
+function renderizarDocumentos(documentos) {
+
+    listaDocumentos.replaceChildren();
+
+
+    if (documentos.length === 0) {
+
+        const vazio =
+            document.createElement("div");
+
+        vazio.className =
+            "estado-vazio";
+
+
+        const titulo =
+            document.createElement("h3");
+
+        titulo.textContent =
+            "Nenhum documento pendente";
+
+
+        const texto =
+            document.createElement("p");
+
+        texto.textContent =
+            "Você não possui documentos aguardando assinatura.";
+
+
+        vazio.append(
+            titulo,
+            texto
+        );
+
+
+        listaDocumentos.appendChild(
+            vazio
+        );
+
+
+        return;
+    }
+
+
+    for (const documento of documentos) {
+
+        const card =
+            document.createElement("article");
+
+        card.className =
+            "documento-card";
+
+
+        const conteudo =
+            document.createElement("div");
+
+        conteudo.className =
+            "documento-conteudo";
+
+
+        const status =
+            document.createElement("span");
+
+        status.className =
+            "documento-status";
+
+        status.textContent =
+            "Aguardando assinatura";
+
+
+        const titulo =
+            document.createElement("h3");
+
+        titulo.textContent =
+            documento.titulo;
+
+
+        const descricao =
+            document.createElement("p");
+
+        descricao.textContent =
+            documento.descricao ||
+            "Documento corporativo";
+
+
+        const versao =
+            document.createElement("small");
+
+        versao.textContent =
+            `Versão ${documento.versao}`;
+
+
+        const botao =
+            document.createElement("button");
+
+        botao.type = "button";
+
+        botao.className =
+            "botao-documento";
+
+        botao.textContent =
+            "Abrir";
+
+
+        botao.addEventListener(
+            "click",
+            function () {
+
+                alert(
+                    "O visualizador do documento será criado na próxima etapa."
+                );
+
+            }
+        );
+
+
+        conteudo.append(
+            status,
+            titulo,
+            descricao,
+            versao
+        );
+
+
+        card.append(
+            conteudo,
+            botao
+        );
+
+
+        listaDocumentos.appendChild(
+            card
+        );
+    }
+}
 
 async function realizarLogout() {
 

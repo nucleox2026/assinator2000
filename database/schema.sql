@@ -45,3 +45,79 @@ ON sessoes(token_hash);
 
 CREATE INDEX IF NOT EXISTS idx_sessoes_usuario_id
 ON sessoes(usuario_id);
+
+CREATE TABLE IF NOT EXISTS documentos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    codigo TEXT NOT NULL UNIQUE COLLATE NOCASE,
+
+    titulo TEXT NOT NULL,
+
+    descricao TEXT,
+
+    nome_arquivo TEXT,
+
+    sharepoint_item_id TEXT,
+
+    versao TEXT NOT NULL DEFAULT '1',
+
+    ativo INTEGER NOT NULL DEFAULT 1
+        CHECK (ativo IN (0, 1)),
+
+    criado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    atualizado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE IF NOT EXISTS documentos_usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    documento_id INTEGER NOT NULL,
+
+    usuario_id INTEGER NOT NULL,
+
+    status TEXT NOT NULL DEFAULT 'PENDENTE'
+        CHECK (
+            status IN (
+                'PENDENTE',
+                'EM_LEITURA',
+                'ASSINADO'
+            )
+        ),
+
+    atribuido_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    visualizado_em TEXT,
+
+    assinado_em TEXT,
+
+    FOREIGN KEY (documento_id)
+        REFERENCES documentos(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (usuario_id)
+        REFERENCES usuarios(id)
+        ON DELETE CASCADE,
+
+    UNIQUE (
+        documento_id,
+        usuario_id
+    )
+);
+
+
+CREATE INDEX IF NOT EXISTS idx_documentos_codigo
+ON documentos(codigo);
+
+
+CREATE INDEX IF NOT EXISTS idx_documentos_usuarios_usuario
+ON documentos_usuarios(usuario_id);
+
+
+CREATE INDEX IF NOT EXISTS idx_documentos_usuarios_documento
+ON documentos_usuarios(documento_id);
+
+
+CREATE INDEX IF NOT EXISTS idx_documentos_usuarios_status
+ON documentos_usuarios(status);
