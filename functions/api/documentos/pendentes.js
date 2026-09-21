@@ -1,5 +1,5 @@
 import {
-    obterUsuarioAutenticado
+    obterContextoAutenticado
 } from "../../_lib/auth.js";
 
 
@@ -22,26 +22,24 @@ function respostaJson(
 }
 
 
-export async function onRequestGet(context) {
+export async function onRequestGet(
+    context
+) {
 
     try {
 
-        /*
-         * Descobre quem está autenticado
-         * através da sessão HttpOnly.
-         */
-
-        const usuario =
-            await obterUsuarioAutenticado(
+        const autenticacao =
+            await obterContextoAutenticado(
                 context
             );
 
 
-        if (!usuario) {
+        if (!autenticacao) {
 
             return respostaJson(
                 {
                     sucesso: false,
+
                     mensagem:
                         "Sessão inválida ou expirada."
                 },
@@ -51,8 +49,9 @@ export async function onRequestGet(context) {
 
 
         /*
-         * Busca somente documentos
-         * atribuídos àquele usuário.
+         * Nesta nova fase mostramos somente
+         * atribuições vinculadas a uma versão
+         * imutável.
          */
 
         const resultado =
@@ -60,64 +59,115 @@ export async function onRequestGet(context) {
                 .prepare(
                     `
                     SELECT
-                        d.id,
-                        d.codigo,
-                        d.titulo,
-                        d.descricao,
-                        d.nome_arquivo,
-                        d.versao,
+                        du.id
+                            AS atribuicao_id,
 
                         du.status,
                         du.atribuido_em,
                         du.visualizado_em,
-                        du.assinado_em
+                        du.leitura_concluida_em,
+                        du.assinado_em,
+
+                        d.id
+                            AS documento_id,
+
+                        d.codigo,
+                        d.titulo,
+                        d.descricao,
+
+                        dv.id
+                            AS documento_versao_id,
+
+                        dv.numero_versao,
+                        dv.nome_arquivo,
+                        dv.tamanho_bytes,
+                        dv.sha256,
+                        dv.publicado_em
 
                     FROM documentos_usuarios du
 
                     INNER JOIN documentos d
-                        ON d.id = du.documento_id
+                        ON d.id =
+                            du.documento_id
+
+                    INNER JOIN documento_versoes dv
+                        ON dv.id =
+                            du.documento_versao_id
 
                     WHERE
                         du.usuario_id = ?1
+
                         AND d.ativo = 1
-                        AND du.status != 'ASSINADO'
+
+                        AND du.status !=
+                            'ASSINADO'
 
                     ORDER BY
                         du.atribuido_em DESC
                     `
                 )
-                .bind(usuario.id)
-                .run();
-
-
-        /*
-         * Conta documentos já assinados.
-         */
-
-        const assinados =
-            await context.env.DB
-                .prepare(
-                    `
-                    SELECT
-                        COUNT(*) AS total
-
-                    FROM documentos_usuarios du
-
-                    INNER JOIN documentos d
-                        ON d.id = du.documento_id
-
-                    WHERE
-                        du.usuario_id = ?1
-                        AND d.ativo = 1
-                        AND du.status = 'ASSINADO'
-                    `
+                .bind(
+                    autenticacao
+                        .usuario
+                        .id
                 )
-                .bind(usuario.id)
-                .first();
+                .all();
 
 
         const documentos =
-            resultado.results || [];
+            (
+                resultado.results ||
+                []
+            ).map(
+                item => ({
+                    atribuicaoId:
+                        item.atribuicao_id,
+
+                    documentoId:
+                        item.documento_id,
+
+                    documentoVersaoId:
+                        item
+                            .documento_versao_id,
+
+                    codigo:
+                        item.codigo,
+
+                    titulo:
+                        item.titulo,
+
+                    descricao:
+                        item.descricao,
+
+                    status:
+                        item.status,
+
+                    atribuidoEm:
+                        item.atribuido_em,
+
+                    visualizadoEm:
+                        item.visualizado_em,
+
+                    leituraConcluidaEm:
+                        item
+                            .leitura_concluida_em,
+
+                    numeroVersao:
+                        item.numero_versao,
+
+                    nomeArquivo:
+                        item.nome_arquivo,
+
+                    tamanhoBytes:
+                        item.tamanho_bytes,
+
+                    sha256:
+                        item.sha256,
+
+                    publicadoEm:
+                        item.publicado_em
+                })
+            );
 
 
         return respostaJson(
@@ -126,12 +176,7 @@ export async function onRequestGet(context) {
 
                 resumo: {
                     pendentes:
-                        documentos.length,
-
-                    assinados:
-                        Number(
-                            assinados?.total || 0
-                        )
+                        documentos.length
                 },
 
                 documentos
@@ -142,7 +187,7 @@ export async function onRequestGet(context) {
     } catch (erro) {
 
         console.error(
-            "Erro ao buscar documentos:",
+            "Erro ao listar documentos:",
             erro
         );
 
@@ -150,6 +195,7 @@ export async function onRequestGet(context) {
         return respostaJson(
             {
                 sucesso: false,
+
                 mensagem:
                     "Não foi possível carregar os documentos."
             },
