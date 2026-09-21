@@ -90,6 +90,8 @@ CREATE TABLE IF NOT EXISTS documentos_usuarios (
 
     visualizado_em TEXT,
 
+    leitura_concluida_em TEXT,
+
     assinado_em TEXT,
 
     FOREIGN KEY (documento_id)

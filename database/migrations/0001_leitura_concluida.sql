@@ -1,0 +1,2 @@
+ALTER TABLE documentos_usuarios
+ADD COLUMN leitura_concluida_em TEXT;
