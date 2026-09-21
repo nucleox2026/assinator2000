@@ -71,7 +71,7 @@ formLogin.addEventListener(
         if (!usuario || !senha) {
 
             mostrarMensagem(
-                "Informe o usuário e a data de nascimento.",
+                "Informe o usuário e o PIN pessoal.",
                 "erro"
             );
 
@@ -79,10 +79,10 @@ formLogin.addEventListener(
         }
 
 
-        if (!/^\d{8}$/.test(senha)) {
+        if (!/^\d{6}$/.test(senha)) {
 
             mostrarMensagem(
-                "A data de nascimento deve conter 8 números.",
+                "O PIN pessoal deve conter 6 números.",
                 "erro"
             );
 

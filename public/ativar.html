@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 
 <head>
+
     <meta charset="UTF-8">
 
     <meta
@@ -9,18 +10,17 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <meta
-        name="description"
-        content="Assinator2000 - Portal corporativo de assinatura eletrônica."
-    >
-
-    <title>Assinator2000</title>
+    <title>
+        Ativar credencial | Assinator2000
+    </title>
 
     <link
         rel="stylesheet"
         href="css/style.css"
     >
+
 </head>
+
 
 <body>
 
@@ -35,11 +35,15 @@
                 </div>
 
                 <div>
-                    <h1>Assinator2000</h1>
+
+                    <h1>
+                        Assinator2000
+                    </h1>
 
                     <p>
-                        Portal de assinatura eletrônica
+                        Ativação da credencial pessoal
                     </p>
+
                 </div>
 
             </div>
@@ -50,22 +54,24 @@
                 <div class="cabecalho-login">
 
                     <span class="etiqueta">
-                        Acesso do colaborador
+                        Primeiro acesso
                     </span>
 
                     <h2>
-                        Bem-vindo
+                        Crie seu PIN pessoal
                     </h2>
 
                     <p>
-                        Informe seu usuário e seu PIN pessoal para acessar os documentos pendentes.
+                        Informe o usuário e o código
+                        temporário recebido. Depois escolha
+                        um PIN pessoal de 6 dígitos.
                     </p>
 
                 </div>
 
 
                 <form
-                    id="formLogin"
+                    id="formAtivacao"
                     class="form-login"
                     novalidate
                 >
@@ -78,12 +84,10 @@
 
                         <input
                             id="usuario"
-                            name="usuario"
                             type="text"
                             placeholder="nome.sobrenome"
                             autocomplete="username"
                             autocapitalize="none"
-                            spellcheck="false"
                             required
                         >
 
@@ -92,25 +96,57 @@
 
                     <div class="campo">
 
-                        <label for="senha">
-                            PIN pessoal
+                        <label for="codigo">
+                            Código temporário
                         </label>
 
                         <input
-                            id="senha"
-                            name="senha"
+                            id="codigo"
                             type="password"
-                            placeholder="6 dígitos"
-                            autocomplete="current-password"
+                            placeholder="8 dígitos"
                             inputmode="numeric"
-                            maxlength="6"
-                            pattern="[0-9]{6}"
+                            maxlength="8"
+                            autocomplete="one-time-code"
                             required
                         >
 
-                        <small>
-                            Digite seu PIN pessoal de 6 dígitos. Caso não tenha, clique em "Primeiro acesso? Ativar credencial" para criar um.
-                        </small>
+                    </div>
+
+
+                    <div class="campo">
+
+                        <label for="pin">
+                            Novo PIN
+                        </label>
+
+                        <input
+                            id="pin"
+                            type="password"
+                            placeholder="6 dígitos"
+                            inputmode="numeric"
+                            maxlength="6"
+                            autocomplete="new-password"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="campo">
+
+                        <label for="confirmarPin">
+                            Confirme o PIN
+                        </label>
+
+                        <input
+                            id="confirmarPin"
+                            type="password"
+                            placeholder="Digite novamente"
+                            inputmode="numeric"
+                            maxlength="6"
+                            autocomplete="new-password"
+                            required
+                        >
 
                     </div>
 
@@ -124,42 +160,31 @@
 
 
                     <button
-                        id="botaoEntrar"
+                        id="botaoAtivar"
                         class="botao-entrar"
                         type="submit"
                     >
-                        Entrar
+                        Criar PIN pessoal
                     </button>
 
-                    <a 
-                        href="/ativar.html"
+
+                    <a
+                        href="/"
                         class="link-ativacao"
                     >
-                        Primeiro acesso? Ativar credencial
+                        Voltar para o login
                     </a>
 
                 </form>
 
             </div>
 
-
-            <footer class="rodape-login">
-
-                <span>
-                    Assinator2000
-                </span>
-
-                <span>
-                    Versão 0.1.0
-                </span>
-
-            </footer>
-
         </section>
 
     </main>
 
-    <script src="js/app.js"></script>
+
+    <script src="js/ativar.js"></script>
 
 </body>
 
