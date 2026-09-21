@@ -9,5 +9,11 @@
 			"database_name": "assinator2000-db",
 			"database_id": "bb530295-d7e4-4ae3-bb30-f44d966e68f8"
 		}
+	],
+	"r2_buckets": [
+		{
+			"bucket_name": "assinator2000-documentos",
+			"binding": "DOCUMENTOS"
+		}
 	]
 }
