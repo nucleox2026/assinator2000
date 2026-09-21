@@ -3,8 +3,21 @@ import {
     hashTokenSessao
 } from "./session.js";
 
+import {
+    obterDispositivoAutorizado
+} from "./device.js";
 
 export async function obterUsuarioAutenticado(context) {
+
+    const dispositivo =
+        await obterDispositivoAutorizado(
+            context
+        );
+
+
+    if (!dispositivo) {
+        return null;
+    }
 
     const token =
         obterTokenSessao(
@@ -43,7 +56,8 @@ export async function obterUsuarioAutenticado(context) {
 
                 WHERE
                     s.token_hash = ?1
-                    AND s.expira_em > ?2
+                    AND s.dispositivo_id = ?2
+                    AND s.expira_em > ?3
                     AND u.ativo = 1
 
                 LIMIT 1
@@ -51,6 +65,7 @@ export async function obterUsuarioAutenticado(context) {
             )
             .bind(
                 tokenHash,
+                dispositivo.id,
                 agora
             )
             .first();

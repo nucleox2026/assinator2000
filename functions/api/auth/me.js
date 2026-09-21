@@ -1,7 +1,6 @@
 import {
-    obterTokenSessao,
-    hashTokenSessao
-} from "../../_lib/session.js";
+    obterUsuarioAutenticado
+} from "../../_lib/auth.js";
 
 
 function respostaJson(
@@ -27,13 +26,13 @@ export async function onRequestGet(context) {
 
     try {
 
-        const token =
-            obterTokenSessao(
-                context.request
+        const usuario =
+            await obterUsuarioAutenticado(
+                context
             );
 
 
-        if (!token) {
+        if (!usuario) {
 
             return respostaJson(
                 {
@@ -42,77 +41,6 @@ export async function onRequestGet(context) {
                 401
             );
         }
-
-
-        const tokenHash =
-            await hashTokenSessao(token);
-
-
-        const agora =
-            new Date().toISOString();
-
-
-        const sessao =
-            await context.env.DB
-                .prepare(
-                    `
-                    SELECT
-                        s.id AS sessao_id,
-                        s.expira_em,
-
-                        u.id,
-                        u.nome,
-                        u.usuario,
-                        u.setor,
-                        u.perfil,
-                        u.ativo
-
-                    FROM sessoes s
-
-                    INNER JOIN usuarios u
-                        ON u.id = s.usuario_id
-
-                    WHERE
-                        s.token_hash = ?1
-                        AND s.expira_em > ?2
-                        AND u.ativo = 1
-
-                    LIMIT 1
-                    `
-                )
-                .bind(
-                    tokenHash,
-                    agora
-                )
-                .first();
-
-
-        if (!sessao) {
-
-            return respostaJson(
-                {
-                    autenticado: false
-                },
-                401
-            );
-        }
-
-
-        await context.env.DB
-            .prepare(
-                `
-                UPDATE sessoes
-
-                SET ultimo_acesso_em =
-                    CURRENT_TIMESTAMP
-
-                WHERE id = ?1
-                `
-            )
-            .bind(
-                sessao.sessao_id
-            )
-            .run();
 
 
         return respostaJson(
@@ -120,11 +48,20 @@ export async function onRequestGet(context) {
                 autenticado: true,
 
                 usuario: {
-                    id: sessao.id,
-                    nome: sessao.nome,
-                    usuario: sessao.usuario,
-                    setor: sessao.setor,
-                    perfil: sessao.perfil
+                    id:
+                        usuario.id,
+
+                    nome:
+                        usuario.nome,
+
+                    usuario:
+                        usuario.usuario,
+
+                    setor:
+                        usuario.setor,
+
+                    perfil:
+                        usuario.perfil
                 }
             }
         );

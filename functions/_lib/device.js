@@ -146,3 +146,76 @@ export function criarCookieDispositivo(
         `Max-Age=${DURACAO_DISPOSITIVO_SEGUNDOS}`
     ].join("; ") + secure;
 }
+
+export async function obterDispositivoAutorizado(
+    context
+) {
+
+    const token =
+        obterTokenDispositivo(
+            context.request
+        );
+
+
+    if (!token) {
+        return null;
+    }
+
+
+    const tokenHash =
+        await hashTokenDispositivo(
+            token
+        );
+
+
+    const dispositivo =
+        await context.env.DB
+            .prepare(
+                `
+                SELECT
+                    id,
+                    codigo,
+                    nome,
+                    local,
+                    ativo,
+                    ativado_em
+
+                FROM dispositivos
+
+                WHERE
+                    token_hash = ?1
+                    AND ativo = 1
+                    AND ativado_em IS NOT NULL
+
+                LIMIT 1
+                `
+            )
+            .bind(tokenHash)
+            .first();
+
+
+    if (!dispositivo) {
+        return null;
+    }
+
+
+    await context.env.DB
+        .prepare(
+            `
+            UPDATE dispositivos
+
+            SET
+                ultimo_acesso_em =
+                    CURRENT_TIMESTAMP
+
+            WHERE id = ?1
+            `
+        )
+        .bind(
+            dispositivo.id
+        )
+        .run();
+
+
+    return dispositivo;
+}

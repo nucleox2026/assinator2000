@@ -41,9 +41,31 @@ import {
     DURACAO_SESSAO
 } from "../../_lib/session.js"
 
+import {
+    obterDispositivoAutorizado
+} from "../../_lib/device.js";
+
 export async function onRequestPost(context) {
 
     try {
+
+        const dispositivo =
+            await obterDispositivoAutorizado(
+                context
+            );
+
+
+        if (!dispositivo) {
+
+            return respostaJson(
+                {
+                    sucesso: false,
+                    mensagem:
+                        "Este equipamento não está autorizado para acessar o Assinator2000."
+                },
+                403
+            );
+        }
 
         const dados = await context.request.json();
 
@@ -100,6 +122,20 @@ export async function onRequestPost(context) {
                 .bind(usuario)
                 .first();
 
+                if (
+                    !colaborador ||
+                    colaborador.ativo !== 1
+                ) {
+
+                    return respostaJson(
+                        {
+                            sucesso: false,
+                            mensagem:
+                                "Usuário ou PIN inválidos."
+                        },
+                        401
+                    );
+                }
 
         /*
          * Não informamos se o usuário existe ou não.
@@ -315,21 +351,24 @@ export async function onRequestPost(context) {
             await context.env.DB
                 .prepare(
                     `
-                    
                     INSERT INTO sessoes (
                         usuario_id,
+                        dispositivo_id,
                         token_hash,
                         expira_em
                     )
+
                     VALUES (
                         ?1,
                         ?2,
-                        ?3
+                        ?3,
+                        ?4
                     )
                     `
                 )
                 .bind(
                     colaborador.id,
+                    dispositivo.id,
                     sessao.tokenHash,
                     expiraEm
                 )

@@ -87,6 +87,8 @@ CREATE TABLE IF NOT EXISTS sessoes (
 
     expira_em TEXT NOT NULL,
 
+    dispositivo_id INTEGER,
+
     ultimo_acesso_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     criado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -98,6 +100,9 @@ CREATE TABLE IF NOT EXISTS sessoes (
     FOREIGN KEY (dispositivo_id)
         REFERENCES dispositivos(id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_sessoes_dispositivo
+ON sessoes(dispositivo_id);
 
 CREATE INDEX IF NOT EXISTS idx_sessoes_token_hash
 ON sessoes(token_hash);
