@@ -1,4 +1,6 @@
-function removerSegredos(valor) {
+function removerSegredos(
+    valor
+) {
 
     if (
         valor === null ||
@@ -8,7 +10,9 @@ function removerSegredos(valor) {
     }
 
 
-    if (Array.isArray(valor)) {
+    if (
+        Array.isArray(valor)
+    ) {
 
         return valor.map(
             removerSegredos
@@ -16,7 +20,9 @@ function removerSegredos(valor) {
     }
 
 
-    if (typeof valor !== "object") {
+    if (
+        typeof valor !== "object"
+    ) {
 
         return valor;
     }
@@ -26,12 +32,14 @@ function removerSegredos(valor) {
         new Set([
             "senha",
             "pin",
-            "confirmarPin",
-            "codigoAtivacao",
-            "codigo",
+            "confirmarpin",
+            "codigoativacao",
+            "codigo_ativacao",
             "token",
             "cookie",
-            "authorization"
+            "authorization",
+            "adminkey",
+            "bootstrapadminkey"
         ]);
 
 
@@ -43,9 +51,18 @@ function removerSegredos(valor) {
         of Object.entries(valor)
     ) {
 
+        const chaveNormalizada =
+            String(chave)
+                .toLowerCase()
+                .replace(
+                    /[^a-z0-9_]/g,
+                    ""
+                );
+
+
         if (
             bloqueados.has(
-                chave
+                chaveNormalizada
             )
         ) {
             continue;
@@ -63,7 +80,9 @@ function removerSegredos(valor) {
 }
 
 
-function obterIp(request) {
+function obterIp(
+    request
+) {
 
     const cfIp =
         request.headers.get(
@@ -94,7 +113,7 @@ function obterIp(request) {
 }
 
 
-export async function registrarAuditoria(
+export function prepararAuditoria(
     context,
     {
         evento,
@@ -116,7 +135,9 @@ export async function registrarAuditoria(
 
 
     const ip =
-        obterIp(request);
+        obterIp(
+            request
+        );
 
 
     const userAgent =
@@ -145,7 +166,7 @@ export async function registrarAuditoria(
             : null;
 
 
-    await context.env.DB
+    return context.env.DB
         .prepare(
             `
             INSERT INTO auditoria (
@@ -204,10 +225,13 @@ export async function registrarAuditoria(
             sessao?.id || null,
 
             dispositivo?.id || null,
+
             dispositivo?.codigo || null,
 
             recursoTipo,
-            recursoId
+
+            recursoId !== null &&
+            recursoId !== undefined
                 ? String(recursoId)
                 : null,
 
@@ -216,6 +240,17 @@ export async function registrarAuditoria(
             cfRay,
 
             detalhesJson
-        )
-        .run();
+        );
+}
+
+
+export async function registrarAuditoria(
+    context,
+    dados
+) {
+
+    return prepararAuditoria(
+        context,
+        dados
+    ).run();
 }

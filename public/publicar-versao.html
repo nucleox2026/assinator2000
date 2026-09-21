@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Publicar documento | Assinator2000
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="/css/style.css"
+    >
+
+</head>
+
+
+<body>
+
+    <main class="pagina-login">
+
+        <section class="painel-login">
+
+            <div class="conteudo-login">
+
+                <div class="cabecalho-login">
+
+                    <span class="etiqueta">
+                        Publicação
+                    </span>
+
+                    <h1>
+                        Nova versão
+                    </h1>
+
+                    <p>
+                        Envie um PDF fictício para registrar
+                        uma versão imutável do documento.
+                    </p>
+
+                </div>
+
+
+                <form
+                    id="formPublicacao"
+                    class="form-login"
+                    novalidate
+                >
+
+                    <div class="campo">
+
+                        <label for="documentoId">
+                            ID do documento
+                        </label>
+
+                        <input
+                            id="documentoId"
+                            type="number"
+                            min="1"
+                            value="1"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="campo">
+
+                        <label for="arquivo">
+                            Arquivo PDF
+                        </label>
+
+                        <input
+                            id="arquivo"
+                            type="file"
+                            accept=".pdf,application/pdf"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div
+                        id="mensagem"
+                        class="mensagem"
+                        role="alert"
+                        aria-live="polite"
+                    ></div>
+
+
+                    <button
+                        id="botaoPublicar"
+                        class="botao-entrar"
+                        type="submit"
+                    >
+                        Publicar versão
+                    </button>
+
+                </form>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <script src="/js/publicar-versao.js"></script>
+
+</body>
+
+</html>
