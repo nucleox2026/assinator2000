@@ -1,39 +1,160 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-    
+
 <head>
     <meta charset="UTF-8">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Assinator2000 - Portal corporativo de assinatura eletrônica."
+    >
 
     <title>Assinator2000</title>
 
     <link
-        rel="stylesheet" 
+        rel="stylesheet"
         href="css/style.css"
     >
 </head>
 
 <body>
 
-    <header>
-        <h1>Assinator2000</h1>
+    <main class="pagina-login">
 
-        <p>
-            Portal corporativo de assinatura eletrônica
-        </p>
-    </header>
+        <section class="painel-login">
 
-    <main>
+            <div class="marca">
 
-        <section>
+                <div class="marca-icone">
+                    A2K
+                </div>
 
-            <h2>Acesso ao sistema</h2>
+                <div>
+                    <h1>Assinator2000</h1>
 
-            <p>
-                Entre utilizando sua conta
-            </p>
+                    <p>
+                        Portal de assinatura eletrônica
+                    </p>
+                </div>
+
+            </div>
+
+
+            <div class="conteudo-login">
+
+                <div class="cabecalho-login">
+
+                    <span class="etiqueta">
+                        Acesso do colaborador
+                    </span>
+
+                    <h2>
+                        Bem-vindo
+                    </h2>
+
+                    <p>
+                        Informe seu usuário e sua data de nascimento
+                        para acessar os documentos pendentes.
+                    </p>
+
+                </div>
+
+
+                <form
+                    id="formLogin"
+                    class="form-login"
+                    novalidate
+                >
+
+                    <div class="campo">
+
+                        <label for="usuario">
+                            Usuário
+                        </label>
+
+                        <input
+                            id="usuario"
+                            name="usuario"
+                            type="text"
+                            placeholder="nome.sobrenome"
+                            autocomplete="username"
+                            autocapitalize="none"
+                            spellcheck="false"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="campo">
+
+                        <label for="senha">
+                            Data de nascimento
+                        </label>
+
+                        <input
+                            id="senha"
+                            name="senha"
+                            type="password"
+                            placeholder="DDMMAAAA"
+                            autocomplete="current-password"
+                            inputmode="numeric"
+                            maxlength="8"
+                            pattern="[0-9]{8}"
+                            required
+                        >
+
+                        <small>
+                            Digite somente os números.
+                        </small>
+
+                    </div>
+
+
+                    <div
+                        id="mensagem"
+                        class="mensagem"
+                        role="alert"
+                        aria-live="polite"
+                    ></div>
+
+
+                    <button
+                        id="botaoEntrar"
+                        class="botao-entrar"
+                        type="submit"
+                    >
+                        Entrar
+                    </button>
+
+                </form>
+
+            </div>
+
+
+            <footer class="rodape-login">
+
+                <span>
+                    Assinator2000
+                </span>
+
+                <span>
+                    Versão 0.1.0
+                </span>
+
+            </footer>
+
         </section>
+
     </main>
+
+    <script src="js/app.js"></script>
+
 </body>
+
 </html>
