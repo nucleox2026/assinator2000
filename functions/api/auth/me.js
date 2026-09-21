@@ -1,5 +1,5 @@
 import {
-    obterUsuarioAutenticado
+    obterContextoAutenticado
 } from "../../_lib/auth.js";
 
 
@@ -26,13 +26,13 @@ export async function onRequestGet(context) {
 
     try {
 
-        const usuario =
-            await obterUsuarioAutenticado(
+        const contexto =
+            await obterContextoAutenticado(
                 context
             );
 
 
-        if (!usuario) {
+        if (!contexto) {
 
             return respostaJson(
                 {
@@ -47,21 +47,18 @@ export async function onRequestGet(context) {
             {
                 autenticado: true,
 
-                usuario: {
+                usuario:
+                    contexto.usuario,
+
+                dispositivo:
+                    contexto.dispositivo,
+
+                sessao: {
                     id:
-                        usuario.id,
+                        contexto.sessao.id,
 
-                    nome:
-                        usuario.nome,
-
-                    usuario:
-                        usuario.usuario,
-
-                    setor:
-                        usuario.setor,
-
-                    perfil:
-                        usuario.perfil
+                    expiraEm:
+                        contexto.sessao.expiraEm
                 }
             }
         );
@@ -70,7 +67,7 @@ export async function onRequestGet(context) {
     } catch (erro) {
 
         console.error(
-            "Erro ao verificar sessão:",
+            "Erro ao verificar autenticação:",
             erro
         );
 
