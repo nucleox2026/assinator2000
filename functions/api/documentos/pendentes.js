@@ -15,7 +15,10 @@ function respostaJson(
 
             headers: {
                 "Content-Type":
-                    "application/json; charset=UTF-8"
+                    "application/json; charset=UTF-8",
+
+                "Cache-Control":
+                    "no-store"
             }
         }
     );
@@ -48,10 +51,15 @@ export async function onRequestGet(
         }
 
 
+        const usuarioId =
+            autenticacao
+                .usuario
+                .id;
+
+
         /*
-         * Nesta nova fase mostramos somente
-         * atribuições vinculadas a uma versão
-         * imutável.
+         * Mostramos somente atribuições
+         * vinculadas a uma versão imutável.
          */
 
         const resultado =
@@ -107,11 +115,40 @@ export async function onRequestGet(
                     `
                 )
                 .bind(
-                    autenticacao
-                        .usuario
-                        .id
+                    usuarioId
                 )
                 .all();
+
+
+        const resumoAssinados =
+            await context.env.DB
+                .prepare(
+                    `
+                    SELECT
+                        COUNT(*) AS quantidade
+
+                    FROM documentos_usuarios du
+
+                    INNER JOIN documentos d
+                        ON d.id =
+                            du.documento_id
+
+                    WHERE
+                        du.usuario_id = ?1
+
+                        AND du.documento_versao_id
+                            IS NOT NULL
+
+                        AND du.status =
+                            'ASSINADO'
+
+                        AND d.ativo = 1
+                    `
+                )
+                .bind(
+                    usuarioId
+                )
+                .first();
 
 
         const documentos =
@@ -152,6 +189,9 @@ export async function onRequestGet(
                         item
                             .leitura_concluida_em,
 
+                    assinadoEm:
+                        item.assinado_em,
+
                     numeroVersao:
                         item.numero_versao,
 
@@ -176,7 +216,14 @@ export async function onRequestGet(
 
                 resumo: {
                     pendentes:
-                        documentos.length
+                        documentos.length,
+
+                    assinados:
+                        Number(
+                            resumoAssinados
+                                ?.quantidade ||
+                            0
+                        )
                 },
 
                 documentos

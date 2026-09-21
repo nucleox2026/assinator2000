@@ -53,11 +53,11 @@ async function verificarSessao() {
                 "/api/auth/me",
                 {
                     method: "GET",
-
                     headers: {
                         "Accept":
                             "application/json"
-                    }
+                    },
+                    cache: "no-store"
                 }
             );
 
@@ -65,7 +65,6 @@ async function verificarSessao() {
         if (!resposta.ok) {
 
             window.location.replace("/");
-
             return;
         }
 
@@ -80,7 +79,6 @@ async function verificarSessao() {
         ) {
 
             window.location.replace("/");
-
             return;
         }
 
@@ -91,13 +89,7 @@ async function verificarSessao() {
 
         await carregarDocumentos();
 
-        /*
-         * Somente agora mostramos
-         * o dashboard.
-         */
-
         estadoCarregando.hidden = true;
-
         appDashboard.hidden = false;
 
 
@@ -122,13 +114,13 @@ async function verificarSessao() {
                 Tentar novamente
             </button>
         `;
-
     }
-
 }
 
 
-function carregarUsuario(usuario) {
+function carregarUsuario(
+    usuario
+) {
 
     nomeUsuario.textContent =
         usuario.nome;
@@ -136,11 +128,6 @@ function carregarUsuario(usuario) {
     setorUsuario.textContent =
         usuario.setor || "Sem setor";
 
-
-    /*
-     * Pegamos somente o primeiro nome
-     * para a saudação.
-     */
 
     const primeiroNome =
         usuario.nome
@@ -152,6 +139,7 @@ function carregarUsuario(usuario) {
         `Olá, ${primeiroNome}`;
 }
 
+
 async function carregarDocumentos() {
 
     try {
@@ -161,11 +149,11 @@ async function carregarDocumentos() {
                 "/api/documentos/pendentes",
                 {
                     method: "GET",
-
                     headers: {
                         "Accept":
                             "application/json"
-                    }
+                    },
+                    cache: "no-store"
                 }
             );
 
@@ -173,7 +161,6 @@ async function carregarDocumentos() {
         if (resposta.status === 401) {
 
             window.location.replace("/");
-
             return;
         }
 
@@ -192,14 +179,20 @@ async function carregarDocumentos() {
 
 
         quantidadePendentes.textContent =
-            dados.resumo.pendentes;
+            String(
+                dados.resumo?.pendentes ?? 0
+            );
 
         quantidadeAssinados.textContent =
-            dados.resumo.assinados;
+            String(
+                dados.resumo?.assinados ?? 0
+            );
 
 
         renderizarDocumentos(
-            dados.documentos
+            Array.isArray(dados.documentos)
+                ? dados.documentos
+                : []
         );
 
 
@@ -211,15 +204,36 @@ async function carregarDocumentos() {
         );
 
 
+        quantidadePendentes.textContent = "0";
+        quantidadeAssinados.textContent = "0";
+
         listaDocumentos.textContent =
             "Não foi possível carregar os documentos.";
-
     }
-
 }
 
 
-function renderizarDocumentos(documentos) {
+function textoStatusDocumento(
+    documento
+) {
+
+    if (documento.leituraConcluidaEm) {
+        return "Leitura concluída";
+    }
+
+
+    if (documento.status === "EM_LEITURA") {
+        return "Em leitura";
+    }
+
+
+    return "Aguardando leitura";
+}
+
+
+function renderizarDocumentos(
+    documentos
+) {
 
     listaDocumentos.replaceChildren();
 
@@ -233,6 +247,15 @@ function renderizarDocumentos(documentos) {
             "estado-vazio";
 
 
+        const icone =
+            document.createElement("div");
+
+        icone.className =
+            "estado-vazio-icone";
+
+        icone.textContent = "✓";
+
+
         const titulo =
             document.createElement("h3");
 
@@ -244,10 +267,11 @@ function renderizarDocumentos(documentos) {
             document.createElement("p");
 
         texto.textContent =
-            "Você não possui documentos aguardando assinatura.";
+            "Você não possui documentos aguardando leitura ou assinatura.";
 
 
         vazio.append(
+            icone,
             titulo,
             texto
         );
@@ -257,12 +281,14 @@ function renderizarDocumentos(documentos) {
             vazio
         );
 
-
         return;
     }
 
 
-    for (const documento of documentos) {
+    for (
+        const documento
+        of documentos
+    ) {
 
         const card =
             document.createElement("article");
@@ -285,7 +311,9 @@ function renderizarDocumentos(documentos) {
             "documento-status";
 
         status.textContent =
-            "Aguardando assinatura";
+            textoStatusDocumento(
+                documento
+            );
 
 
         const titulo =
@@ -307,29 +335,50 @@ function renderizarDocumentos(documentos) {
             document.createElement("small");
 
         versao.textContent =
-            `Versão ${documento.versao}`;
+            `Versão ${documento.numeroVersao}`;
 
 
         const botao =
             document.createElement("button");
 
         botao.type = "button";
-
         botao.className =
             "botao-documento";
 
         botao.textContent =
-            "Abrir";
+            documento.status === "PENDENTE"
+                ? "Abrir"
+                : "Continuar";
 
 
         botao.addEventListener(
             "click",
             function () {
 
-                alert(
-                    "O visualizador do documento será criado na próxima etapa."
-                );
+                const atribuicaoId =
+                    Number(
+                        documento.atribuicaoId
+                    );
 
+
+                if (
+                    !Number.isInteger(
+                        atribuicaoId
+                    ) ||
+                    atribuicaoId <= 0
+                ) {
+
+                    console.error(
+                        "Atribuição inválida:",
+                        documento
+                    );
+
+                    return;
+                }
+
+
+                window.location.href =
+                    `/documento.html?atribuicao=${encodeURIComponent(atribuicaoId)}`;
             }
         );
 
@@ -354,10 +403,10 @@ function renderizarDocumentos(documentos) {
     }
 }
 
+
 async function realizarLogout() {
 
     botaoSair.disabled = true;
-
     botaoSair.textContent =
         "Saindo...";
 
@@ -367,7 +416,8 @@ async function realizarLogout() {
         await fetch(
             "/api/auth/logout",
             {
-                method: "POST"
+                method: "POST",
+                cache: "no-store"
             }
         );
 
@@ -380,15 +430,8 @@ async function realizarLogout() {
 
     } finally {
 
-        /*
-         * Mesmo que exista algum problema
-         * de comunicação, voltamos ao login.
-         */
-
         window.location.replace("/");
-
     }
-
 }
 
 

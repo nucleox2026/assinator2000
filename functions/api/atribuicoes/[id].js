@@ -227,8 +227,7 @@ export async function onRequestGet(
                     `
                 )
                 .bind(
-                    atribuicao.id ??
-                        atribuicaoId,
+                    atribuicaoId,
 
                     autenticacao
                         .usuario

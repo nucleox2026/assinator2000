@@ -371,22 +371,7 @@ CREATE TABLE IF NOT EXISTS documentos_usuarios (
 
     FOREIGN KEY (usuario_id)
         REFERENCES usuarios(id)
-        ON DELETE CASCADE,
-
-    /*
-     * IMPORTANTE:
-     *
-     * A mesma pessoa poderá receber futuramente
-     * uma nova versão do mesmo documento.
-     *
-     * Por isso a unicidade passa a considerar
-     * a versão específica.
-     */
-
-    UNIQUE (
-        documento_versao_id,
-        usuario_id
-    )
+        ON DELETE CASCADE
 );
 
 
@@ -404,6 +389,38 @@ ON documentos_usuarios(documento_versao_id);
 
 CREATE INDEX IF NOT EXISTS idx_documentos_usuarios_status
 ON documentos_usuarios(status);
+
+
+/*
+ * A mesma versão não pode ser atribuída
+ * duas vezes ao mesmo usuário.
+ */
+
+CREATE UNIQUE INDEX IF NOT EXISTS
+idx_documentos_usuarios_usuario_versao_unico
+
+ON documentos_usuarios(
+    documento_versao_id,
+    usuario_id
+)
+
+WHERE documento_versao_id IS NOT NULL;
+
+
+/*
+ * Compatibilidade com registros legados que
+ * ainda não possuem documento_versao_id.
+ */
+
+CREATE UNIQUE INDEX IF NOT EXISTS
+idx_documentos_usuarios_legacy_unico
+
+ON documentos_usuarios(
+    documento_id,
+    usuario_id
+)
+
+WHERE documento_versao_id IS NULL;
 
 
 /*

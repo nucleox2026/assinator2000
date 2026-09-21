@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Leitura controlada de documento - Assinator2000."
+    >
+
+    <title>Documento | Assinator2000</title>
+
+    <link
+        rel="stylesheet"
+        href="/css/style.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/css/documento.css"
+    >
+</head>
+
+<body>
+
+    <main class="pagina-documento">
+
+        <header class="documento-topo">
+
+            <div>
+                <span class="etiqueta">
+                    Documento para ciência
+                </span>
+
+                <h1 id="tituloDocumento">
+                    Carregando...
+                </h1>
+
+                <p id="codigoDocumento"></p>
+            </div>
+
+            <a
+                href="/dashboard.html"
+                class="botao-voltar"
+            >
+                Voltar
+            </a>
+
+        </header>
+
+
+        <section
+            id="estadoCarregamento"
+            class="estado-documento"
+            aria-live="polite"
+        >
+            Carregando documento...
+        </section>
+
+
+        <section
+            id="conteudoDocumento"
+            class="conteudo-documento"
+            hidden
+        >
+
+            <div class="documento-info">
+
+                <div>
+                    <strong>Versão</strong>
+                    <span id="numeroVersao">-</span>
+                </div>
+
+                <div>
+                    <strong>Status</strong>
+                    <span id="statusDocumento">-</span>
+                </div>
+
+            </div>
+
+
+            <section class="visualizador-documento">
+                <iframe
+                    id="pdfViewer"
+                    title="Documento PDF"
+                ></iframe>
+            </section>
+
+
+            <details class="evidencia-tecnica">
+                <summary>
+                    Integridade do documento
+                </summary>
+
+                <p>SHA-256</p>
+
+                <code id="sha256Documento"></code>
+            </details>
+
+
+            <section
+                class="confirmacao-leitura"
+                id="confirmacaoLeitura"
+            >
+
+                <label class="checkbox-leitura">
+                    <input
+                        id="confirmarVisualizacao"
+                        type="checkbox"
+                        disabled
+                    >
+
+                    <span>
+                        Confirmo que visualizei o documento disponibilizado acima.
+                    </span>
+                </label>
+
+
+                <p
+                    id="mensagemLeitura"
+                    class="mensagem"
+                    role="alert"
+                    aria-live="polite"
+                ></p>
+
+
+                <button
+                    id="botaoConcluir"
+                    class="botao-entrar"
+                    type="button"
+                    disabled
+                >
+                    Concluir leitura
+                </button>
+
+            </section>
+
+        </section>
+
+    </main>
+
+    <script src="/js/documento.js"></script>
+
+</body>
+</html>
