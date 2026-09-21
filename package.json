@@ -1,0 +1,24 @@
+{
+  "name": "assinator2000",
+  "version": "1.0.0",
+  "description": "Sistema corporativo para leitura, aceite e assinatura eletrônica de documentos internos.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nucleox2026/assinator2000.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/nucleox2026/assinator2000/issues"
+  },
+  "homepage": "https://github.com/nucleox2026/assinator2000#readme",
+  "devDependencies": {
+    "wrangler": "^4.135.0"
+  }
+}
