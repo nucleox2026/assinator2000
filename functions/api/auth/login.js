@@ -5,18 +5,41 @@ const MAX_TENTATIVAS = 5;
 const MINUTOS_BLOQUEIO = 15;
 
 
-function respostaJson(dados, status = 200) {
+function respostaJson(
+    dados,
+    status = 200,
+    headersExtras = {}
+) {
+
+    const headers =
+        new Headers({
+            "Content-Type":
+                "application/json; charset=UTF-8"
+        });
+
+
+    for (
+        const [nome, valor]
+        of Object.entries(headersExtras)
+    ) {
+        headers.set(nome, valor);
+    }
+
+
     return new Response(
         JSON.stringify(dados),
         {
             status,
-            headers: {
-                "Content-Type": "application/json; charset=UTF-8"
-            }
+            headers
         }
     );
 }
 
+import {
+    gerarTokenSessao,
+    criarCookieSessao,
+    DURACAO_SESSAO
+} from "../../_lib/session.js"
 
 export async function onRequestPost(context) {
 
@@ -257,6 +280,66 @@ export async function onRequestPost(context) {
             .bind(colaborador.id)
             .run();
 
+            const sessao =
+                await gerarTokenSessao();
+
+            const expiraEm =
+                new Date(
+                    Date.now() +
+                    DURACAO_SESSAO * 1000
+                ).toISOString();
+
+            /*
+             * Remove sessões que já expiraram.
+             */
+
+            await context.env.DB
+                .prepare(
+                    `
+                    
+                    DELETE FROM sessoes
+                    WHERE expira_em <= ?1
+                    `
+
+                )
+                .bind(
+                    new Date().toISOString()
+                )
+                .run();
+
+            /*
+             * Grava somente o HASH do token.
+             */
+
+            await context.env.DB
+                .prepare(
+                    `
+                    
+                    INSERT INTO sessoes (
+                        usuario_id,
+                        token_hash,
+                        expira_em
+                    )
+                    VALUES (
+                        ?1,
+                        ?2,
+                        ?3
+                    )
+                    `
+                )
+                .bind(
+                    colaborador.id,
+                    sessao.tokenHash,
+                    expiraEm
+                )
+                .run();
+
+                const cookie =
+                    criarCookieSessao(
+                        sessao.token,
+                        context.request
+                    );
+
 
         /*
          * 7. Autenticação válida.
@@ -276,9 +359,14 @@ export async function onRequestPost(context) {
                     setor: colaborador.setor,
                     perfil: colaborador.perfil
                 }
+            },
+
+            200,
+
+            {
+                "Set-Cookie": cookie
             }
         );
-
 
     } catch (erro) {
 
