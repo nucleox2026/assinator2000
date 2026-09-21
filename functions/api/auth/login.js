@@ -1,4 +1,23 @@
-import { verificarSenha } from "../../_lib/password.js";
+import {
+    verificarSenha
+} from "../../_lib/password.js";
+
+
+import {
+    registrarAuditoria
+} from "../../_lib/audit.js";
+
+
+import {
+    gerarTokenSessao,
+    criarCookieSessao,
+    DURACAO_SESSAO
+} from "../../_lib/session.js";
+
+
+import {
+    obterDispositivoAutorizado
+} from "../../_lib/device.js";
 
 
 const MAX_TENTATIVAS = 5;
@@ -22,7 +41,11 @@ function respostaJson(
         const [nome, valor]
         of Object.entries(headersExtras)
     ) {
-        headers.set(nome, valor);
+
+        headers.set(
+            nome,
+            valor
+        );
     }
 
 
@@ -35,19 +58,34 @@ function respostaJson(
     );
 }
 
-import {
-    gerarTokenSessao,
-    criarCookieSessao,
-    DURACAO_SESSAO
-} from "../../_lib/session.js"
 
-import {
-    obterDispositivoAutorizado
-} from "../../_lib/device.js";
+function montarUsuarioAuditoria(
+    colaborador
+) {
 
-export async function onRequestPost(context) {
+    return {
+        id:
+            colaborador.id,
+
+        codigoFuncional:
+            colaborador.codigo_funcional,
+
+        usuario:
+            colaborador.usuario
+    };
+}
+
+
+export async function onRequestPost(
+    context
+) {
 
     try {
+
+        /*
+         * 1. O login somente pode acontecer
+         * em um tablet corporativo ativado.
+         */
 
         const dispositivo =
             await obterDispositivoAutorizado(
@@ -57,9 +95,27 @@ export async function onRequestPost(context) {
 
         if (!dispositivo) {
 
+            await registrarAuditoria(
+                context,
+                {
+                    evento:
+                        "LOGIN_FALHA",
+
+                    resultado:
+                        "NEGADO",
+
+                    detalhes: {
+                        motivo:
+                            "DISPOSITIVO_NAO_AUTORIZADO"
+                    }
+                }
+            );
+
+
             return respostaJson(
                 {
                     sucesso: false,
+
                     mensagem:
                         "Este equipamento não está autorizado para acessar o Assinator2000."
                 },
@@ -67,27 +123,67 @@ export async function onRequestPost(context) {
             );
         }
 
-        const dados = await context.request.json();
+
+        /*
+         * 2. Lê e normaliza os dados
+         * enviados pelo formulário.
+         *
+         * O frontend ainda envia o PIN
+         * no campo chamado "senha".
+         */
+
+        const dados =
+            await context.request.json();
+
 
         const usuario =
-            String(dados.usuario || "")
+            String(
+                dados.usuario || ""
+            )
                 .trim()
                 .toLowerCase();
 
-        const senha =
-            String(dados.senha || "").trim();
+
+        const pin =
+            String(
+                dados.senha || ""
+            ).trim();
 
 
         /*
-         * 1. Validação básica.
+         * 3. Validação básica.
          */
 
-        if (!usuario || !senha) {
+        if (
+            !usuario ||
+            !pin
+        ) {
+
+            await registrarAuditoria(
+                context,
+                {
+                    evento:
+                        "LOGIN_FALHA",
+
+                    resultado:
+                        "FALHA",
+
+                    dispositivo,
+
+                    detalhes: {
+                        motivo:
+                            "DADOS_INCOMPLETOS"
+                    }
+                }
+            );
+
 
             return respostaJson(
                 {
                     sucesso: false,
-                    mensagem: "Informe usuário e senha."
+
+                    mensagem:
+                        "Informe o usuário e o PIN."
                 },
                 400
             );
@@ -95,7 +191,7 @@ export async function onRequestPost(context) {
 
 
         /*
-         * 2. Procura o colaborador.
+         * 4. Procura o colaborador.
          */
 
         const colaborador =
@@ -104,6 +200,7 @@ export async function onRequestPost(context) {
                     `
                     SELECT
                         id,
+                        codigo_funcional,
                         nome,
                         usuario,
                         senha_hash,
@@ -114,39 +211,104 @@ export async function onRequestPost(context) {
                         credencial_ativada,
                         tentativas_falhas,
                         bloqueado_ate
+
                     FROM usuarios
+
                     WHERE usuario = ?1
+
                     LIMIT 1
                     `
                 )
-                .bind(usuario)
+                .bind(
+                    usuario
+                )
                 .first();
 
-                if (
-                    !colaborador ||
-                    colaborador.ativo !== 1
-                ) {
-
-                    return respostaJson(
-                        {
-                            sucesso: false,
-                            mensagem:
-                                "Usuário ou PIN inválidos."
-                        },
-                        401
-                    );
-                }
 
         /*
-         * Não informamos se o usuário existe ou não.
+         * Não revelamos se o usuário
+         * existe ou está inativo.
          */
 
-        if (colaborador.credencial_ativada !== 1) {
+        if (
+            !colaborador ||
+            colaborador.ativo !== 1
+        ) {
+
+            await registrarAuditoria(
+                context,
+                {
+                    evento:
+                        "LOGIN_FALHA",
+
+                    resultado:
+                        "FALHA",
+
+                    dispositivo,
+
+                    detalhes: {
+                        motivo:
+                            "USUARIO_OU_CREDENCIAL_INVALIDA",
+
+                        usuarioInformado:
+                            usuario
+                    }
+                }
+            );
+
 
             return respostaJson(
                 {
                     sucesso: false,
-                    mensagem: "Usuário ou senha inválidos."
+
+                    mensagem:
+                        "Usuário ou PIN inválidos."
+                },
+                401
+            );
+        }
+
+
+        /*
+         * 5. A credencial pessoal precisa
+         * ter sido ativada pelo colaborador.
+         */
+
+        if (
+            colaborador
+                .credencial_ativada !== 1
+        ) {
+
+            await registrarAuditoria(
+                context,
+                {
+                    evento:
+                        "LOGIN_FALHA",
+
+                    resultado:
+                        "NEGADO",
+
+                    usuario:
+                        montarUsuarioAuditoria(
+                            colaborador
+                        ),
+
+                    dispositivo,
+
+                    detalhes: {
+                        motivo:
+                            "CREDENCIAL_NAO_ATIVADA"
+                    }
+                }
+            );
+
+
+            return respostaJson(
+                {
+                    sucesso: false,
+
+                    mensagem:
+                        "Usuário ou PIN inválidos."
                 },
                 403
             );
@@ -154,21 +316,65 @@ export async function onRequestPost(context) {
 
 
         /*
-         * 3. Verifica bloqueio.
+         * 6. Verifica bloqueio temporário.
          */
 
-        const agora = new Date();
+        const agora =
+            new Date();
 
-        if (colaborador.bloqueado_ate) {
+
+        if (
+            colaborador.bloqueado_ate
+        ) {
 
             const bloqueadoAte =
-                new Date(colaborador.bloqueado_ate);
+                new Date(
+                    colaborador
+                        .bloqueado_ate
+                );
 
-            if (bloqueadoAte > agora) {
+
+            /*
+             * O bloqueio ainda está vigente.
+             */
+
+            if (
+                bloqueadoAte >
+                agora
+            ) {
+
+                await registrarAuditoria(
+                    context,
+                    {
+                        evento:
+                            "LOGIN_FALHA",
+
+                        resultado:
+                            "BLOQUEADO",
+
+                        usuario:
+                            montarUsuarioAuditoria(
+                                colaborador
+                            ),
+
+                        dispositivo,
+
+                        detalhes: {
+                            motivo:
+                                "USUARIO_TEMPORARIAMENTE_BLOQUEADO",
+
+                            bloqueadoAte:
+                                colaborador
+                                    .bloqueado_ate
+                        }
+                    }
+                );
+
 
                 return respostaJson(
                     {
                         sucesso: false,
+
                         mensagem:
                             "Acesso temporariamente bloqueado. Tente novamente mais tarde."
                     },
@@ -186,28 +392,37 @@ export async function onRequestPost(context) {
                 .prepare(
                     `
                     UPDATE usuarios
+
                     SET
                         tentativas_falhas = 0,
                         bloqueado_ate = NULL,
-                        atualizado_em = CURRENT_TIMESTAMP
+                        atualizado_em =
+                            CURRENT_TIMESTAMP
+
                     WHERE id = ?1
                     `
                 )
-                .bind(colaborador.id)
+                .bind(
+                    colaborador.id
+                )
                 .run();
 
-            colaborador.tentativas_falhas = 0;
-            colaborador.bloqueado_ate = null;
+
+            colaborador.tentativas_falhas =
+                0;
+
+            colaborador.bloqueado_ate =
+                null;
         }
 
 
         /*
-         * 4. Verifica a senha.
+         * 7. Verifica o PIN pessoal.
          */
 
-        const senhaValida =
+        const pinValido =
             await verificarSenha(
-                senha,
+                pin,
                 colaborador.senha_salt,
                 colaborador.senha_hash,
                 context.env.APP_PEPPER
@@ -215,35 +430,48 @@ export async function onRequestPost(context) {
 
 
         /*
-         * 5. Senha incorreta.
+         * 8. PIN incorreto.
          */
 
-        if (!senhaValida) {
+        if (!pinValido) {
 
             const tentativas =
-                Number(colaborador.tentativas_falhas || 0) + 1;
+                Number(
+                    colaborador
+                        .tentativas_falhas ||
+                    0
+                ) + 1;
 
 
             /*
-             * Chegou ao limite.
+             * Atingiu o limite.
              */
 
-            if (tentativas >= MAX_TENTATIVAS) {
+            if (
+                tentativas >=
+                MAX_TENTATIVAS
+            ) {
 
-                const bloqueadoAte = new Date(
-                    Date.now() +
-                    MINUTOS_BLOQUEIO * 60 * 1000
-                ).toISOString();
+                const bloqueadoAte =
+                    new Date(
+                        Date.now() +
+                        MINUTOS_BLOQUEIO *
+                        60 *
+                        1000
+                    ).toISOString();
 
 
                 await context.env.DB
                     .prepare(
                         `
                         UPDATE usuarios
+
                         SET
                             tentativas_falhas = ?1,
                             bloqueado_ate = ?2,
-                            atualizado_em = CURRENT_TIMESTAMP
+                            atualizado_em =
+                                CURRENT_TIMESTAMP
+
                         WHERE id = ?3
                         `
                     )
@@ -255,9 +483,38 @@ export async function onRequestPost(context) {
                     .run();
 
 
+                await registrarAuditoria(
+                    context,
+                    {
+                        evento:
+                            "LOGIN_FALHA",
+
+                        resultado:
+                            "BLOQUEADO",
+
+                        usuario:
+                            montarUsuarioAuditoria(
+                                colaborador
+                            ),
+
+                        dispositivo,
+
+                        detalhes: {
+                            motivo:
+                                "LIMITE_TENTATIVAS",
+
+                            tentativas,
+
+                            bloqueadoAte
+                        }
+                    }
+                );
+
+
                 return respostaJson(
                     {
                         sucesso: false,
+
                         mensagem:
                             "Acesso temporariamente bloqueado. Tente novamente mais tarde."
                     },
@@ -267,16 +524,19 @@ export async function onRequestPost(context) {
 
 
             /*
-             * Ainda não chegou ao limite.
+             * Ainda não atingiu o limite.
              */
 
             await context.env.DB
                 .prepare(
                     `
                     UPDATE usuarios
+
                     SET
                         tentativas_falhas = ?1,
-                        atualizado_em = CURRENT_TIMESTAMP
+                        atualizado_em =
+                            CURRENT_TIMESTAMP
+
                     WHERE id = ?2
                     `
                 )
@@ -287,10 +547,38 @@ export async function onRequestPost(context) {
                 .run();
 
 
+            await registrarAuditoria(
+                context,
+                {
+                    evento:
+                        "LOGIN_FALHA",
+
+                    resultado:
+                        "FALHA",
+
+                    usuario:
+                        montarUsuarioAuditoria(
+                            colaborador
+                        ),
+
+                    dispositivo,
+
+                    detalhes: {
+                        motivo:
+                            "CREDENCIAL_INVALIDA",
+
+                        tentativas
+                    }
+                }
+            );
+
+
             return respostaJson(
                 {
                     sucesso: false,
-                    mensagem: "Usuário ou senha inválidos."
+
+                    mensagem:
+                        "Usuário ou PIN inválidos."
                 },
                 401
             );
@@ -298,56 +586,76 @@ export async function onRequestPost(context) {
 
 
         /*
-         * 6. Login correto.
+         * 9. Login correto.
          *
-         * Zeramos qualquer tentativa anterior.
+         * Zeramos falhas anteriores.
          */
 
         await context.env.DB
             .prepare(
                 `
                 UPDATE usuarios
+
                 SET
                     tentativas_falhas = 0,
                     bloqueado_ate = NULL,
-                    atualizado_em = CURRENT_TIMESTAMP
+                    atualizado_em =
+                        CURRENT_TIMESTAMP
+
                 WHERE id = ?1
                 `
             )
-            .bind(colaborador.id)
+            .bind(
+                colaborador.id
+            )
             .run();
 
-            const sessao =
-                await gerarTokenSessao();
 
-            const expiraEm =
-                new Date(
-                    Date.now() +
-                    DURACAO_SESSAO * 1000
-                ).toISOString();
+        /*
+         * 10. Remove sessões expiradas.
+         */
 
-            /*
-             * Remove sessões que já expiraram.
-             */
+        await context.env.DB
+            .prepare(
+                `
+                DELETE FROM sessoes
 
-            await context.env.DB
-                .prepare(
-                    `
-                    
-                    DELETE FROM sessoes
-                    WHERE expira_em <= ?1
-                    `
+                WHERE expira_em <= ?1
+                `
+            )
+            .bind(
+                new Date()
+                    .toISOString()
+            )
+            .run();
 
-                )
-                .bind(
-                    new Date().toISOString()
-                )
-                .run();
 
-            /*
-             * Grava somente o HASH do token.
-             */
+        /*
+         * 11. Gera um novo token
+         * criptográfico de sessão.
+         */
 
+        const sessao =
+            await gerarTokenSessao();
+
+
+        const expiraEm =
+            new Date(
+                Date.now() +
+                DURACAO_SESSAO *
+                1000
+            ).toISOString();
+
+
+        /*
+         * 12. Grava somente o HASH
+         * do token no banco.
+         *
+         * A sessão também fica vinculada
+         * ao tablet corporativo.
+         */
+
+        const resultadoSessao =
             await context.env.DB
                 .prepare(
                     `
@@ -374,15 +682,91 @@ export async function onRequestPost(context) {
                 )
                 .run();
 
-                const cookie =
-                    criarCookieSessao(
-                        sessao.token,
-                        context.request
-                    );
+
+        const sessaoId =
+            resultadoSessao
+                .meta
+                .last_row_id;
 
 
         /*
-         * 7. Autenticação válida.
+         * 13. Registra o login bem-sucedido.
+         *
+         * Se esta auditoria falhar,
+         * não queremos deixar uma sessão
+         * ativa sem o evento correspondente.
+         */
+
+        try {
+
+            await registrarAuditoria(
+                context,
+                {
+                    evento:
+                        "LOGIN_SUCESSO",
+
+                    resultado:
+                        "SUCESSO",
+
+                    usuario:
+                        montarUsuarioAuditoria(
+                            colaborador
+                        ),
+
+                    sessao: {
+                        id:
+                            sessaoId
+                    },
+
+                    dispositivo,
+
+                    detalhes: {
+                        metodo:
+                            "PIN_PESSOAL"
+                    }
+                }
+            );
+
+        } catch (erroAuditoria) {
+
+            /*
+             * Remove a sessão que acabou
+             * de ser criada.
+             */
+
+            await context.env.DB
+                .prepare(
+                    `
+                    DELETE FROM sessoes
+
+                    WHERE id = ?1
+                    `
+                )
+                .bind(
+                    sessaoId
+                )
+                .run();
+
+
+            throw erroAuditoria;
+        }
+
+
+        /*
+         * 14. Somente depois da sessão e
+         * auditoria estarem gravadas
+         * criamos o cookie HttpOnly.
+         */
+
+        const cookie =
+            criarCookieSessao(
+                sessao.token,
+                context.request
+            );
+
+
+        /*
+         * 15. Autenticação concluída.
          */
 
         return respostaJson(
@@ -393,28 +777,48 @@ export async function onRequestPost(context) {
                     "Autenticação realizada com sucesso.",
 
                 usuario: {
-                    id: colaborador.id,
-                    nome: colaborador.nome,
-                    usuario: colaborador.usuario,
-                    setor: colaborador.setor,
-                    perfil: colaborador.perfil
+                    id:
+                        colaborador.id,
+
+                    codigoFuncional:
+                        colaborador
+                            .codigo_funcional,
+
+                    nome:
+                        colaborador.nome,
+
+                    usuario:
+                        colaborador.usuario,
+
+                    setor:
+                        colaborador.setor,
+
+                    perfil:
+                        colaborador.perfil
                 }
             },
 
             200,
 
             {
-                "Set-Cookie": cookie
+                "Set-Cookie":
+                    cookie
             }
         );
 
+
     } catch (erro) {
 
-        console.error("Erro durante login:", erro);
+        console.error(
+            "Erro durante login:",
+            erro
+        );
+
 
         return respostaJson(
             {
                 sucesso: false,
+
                 mensagem:
                     "Não foi possível realizar o login."
             },
