@@ -1,6 +1,10 @@
 import { verificarSenha } from "../../_lib/password.js";
 
 
+const MAX_TENTATIVAS = 5;
+const MINUTOS_BLOQUEIO = 15;
+
+
 function respostaJson(dados, status = 200) {
     return new Response(
         JSON.stringify(dados),
@@ -29,6 +33,10 @@ export async function onRequestPost(context) {
             String(dados.senha || "").trim();
 
 
+        /*
+         * 1. Validação básica.
+         */
+
         if (!usuario || !senha) {
 
             return respostaJson(
@@ -40,6 +48,10 @@ export async function onRequestPost(context) {
             );
         }
 
+
+        /*
+         * 2. Procura o colaborador.
+         */
 
         const colaborador =
             await context.env.DB
@@ -53,7 +65,9 @@ export async function onRequestPost(context) {
                         senha_salt,
                         setor,
                         perfil,
-                        ativo
+                        ativo,
+                        tentativas_falhas,
+                        bloqueado_ate
                     FROM usuarios
                     WHERE usuario = ?1
                     LIMIT 1
@@ -64,8 +78,7 @@ export async function onRequestPost(context) {
 
 
         /*
-         * Não revelamos se foi o usuário
-         * ou a senha que estava incorreto.
+         * Não informamos se o usuário existe ou não.
          */
 
         if (!colaborador || colaborador.ativo !== 1) {
@@ -80,6 +93,58 @@ export async function onRequestPost(context) {
         }
 
 
+        /*
+         * 3. Verifica bloqueio.
+         */
+
+        const agora = new Date();
+
+        if (colaborador.bloqueado_ate) {
+
+            const bloqueadoAte =
+                new Date(colaborador.bloqueado_ate);
+
+            if (bloqueadoAte > agora) {
+
+                return respostaJson(
+                    {
+                        sucesso: false,
+                        mensagem:
+                            "Acesso temporariamente bloqueado. Tente novamente mais tarde."
+                    },
+                    423
+                );
+            }
+
+
+            /*
+             * O período de bloqueio terminou.
+             * Zeramos o contador.
+             */
+
+            await context.env.DB
+                .prepare(
+                    `
+                    UPDATE usuarios
+                    SET
+                        tentativas_falhas = 0,
+                        bloqueado_ate = NULL,
+                        atualizado_em = CURRENT_TIMESTAMP
+                    WHERE id = ?1
+                    `
+                )
+                .bind(colaborador.id)
+                .run();
+
+            colaborador.tentativas_falhas = 0;
+            colaborador.bloqueado_ate = null;
+        }
+
+
+        /*
+         * 4. Verifica a senha.
+         */
+
         const senhaValida =
             await verificarSenha(
                 senha,
@@ -89,7 +154,78 @@ export async function onRequestPost(context) {
             );
 
 
+        /*
+         * 5. Senha incorreta.
+         */
+
         if (!senhaValida) {
+
+            const tentativas =
+                Number(colaborador.tentativas_falhas || 0) + 1;
+
+
+            /*
+             * Chegou ao limite.
+             */
+
+            if (tentativas >= MAX_TENTATIVAS) {
+
+                const bloqueadoAte = new Date(
+                    Date.now() +
+                    MINUTOS_BLOQUEIO * 60 * 1000
+                ).toISOString();
+
+
+                await context.env.DB
+                    .prepare(
+                        `
+                        UPDATE usuarios
+                        SET
+                            tentativas_falhas = ?1,
+                            bloqueado_ate = ?2,
+                            atualizado_em = CURRENT_TIMESTAMP
+                        WHERE id = ?3
+                        `
+                    )
+                    .bind(
+                        tentativas,
+                        bloqueadoAte,
+                        colaborador.id
+                    )
+                    .run();
+
+
+                return respostaJson(
+                    {
+                        sucesso: false,
+                        mensagem:
+                            "Acesso temporariamente bloqueado. Tente novamente mais tarde."
+                    },
+                    423
+                );
+            }
+
+
+            /*
+             * Ainda não chegou ao limite.
+             */
+
+            await context.env.DB
+                .prepare(
+                    `
+                    UPDATE usuarios
+                    SET
+                        tentativas_falhas = ?1,
+                        atualizado_em = CURRENT_TIMESTAMP
+                    WHERE id = ?2
+                    `
+                )
+                .bind(
+                    tentativas,
+                    colaborador.id
+                )
+                .run();
+
 
             return respostaJson(
                 {
@@ -101,11 +237,37 @@ export async function onRequestPost(context) {
         }
 
 
+        /*
+         * 6. Login correto.
+         *
+         * Zeramos qualquer tentativa anterior.
+         */
+
+        await context.env.DB
+            .prepare(
+                `
+                UPDATE usuarios
+                SET
+                    tentativas_falhas = 0,
+                    bloqueado_ate = NULL,
+                    atualizado_em = CURRENT_TIMESTAMP
+                WHERE id = ?1
+                `
+            )
+            .bind(colaborador.id)
+            .run();
+
+
+        /*
+         * 7. Autenticação válida.
+         */
+
         return respostaJson(
             {
                 sucesso: true,
 
-                mensagem: "Autenticação realizada com sucesso.",
+                mensagem:
+                    "Autenticação realizada com sucesso.",
 
                 usuario: {
                     id: colaborador.id,
@@ -125,7 +287,8 @@ export async function onRequestPost(context) {
         return respostaJson(
             {
                 sucesso: false,
-                mensagem: "Não foi possível realizar o login."
+                mensagem:
+                    "Não foi possível realizar o login."
             },
             500
         );
