@@ -34,7 +34,18 @@ CREATE TABLE IF NOT EXISTS usuarios (
 
     setor TEXT,
 
-    perfil TEXT NOT NULL DEFAULT 'COLABORADOR',
+    perfil TEXT NOT NULL 
+        DEFAULT 'COLABORADOR'
+        CHECK (
+            perfil IN (
+                'COLABORADOR',
+                'ADMIN',
+                'RH',
+                'JURIDICO',
+                'TI',
+                'GOVERNANCA'
+            )
+        ),
 
     ativo INTEGER NOT NULL DEFAULT 1
         CHECK (
