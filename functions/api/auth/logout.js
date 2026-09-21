@@ -5,16 +5,28 @@ import {
 } from "../../_lib/session.js";
 
 
+import {
+    obterContextoAutenticado
+} from "../../_lib/auth.js";
+
+
+import {
+    registrarAuditoria
+} from "../../_lib/audit.js";
+
+
 function respostaJson(
     dados,
     status,
     cookie
 ) {
 
-    const headers = new Headers({
-        "Content-Type":
-            "application/json; charset=UTF-8"
-    });
+    const headers =
+        new Headers({
+            "Content-Type":
+                "application/json; charset=UTF-8"
+        });
+
 
     headers.set(
         "Set-Cookie",
@@ -32,12 +44,84 @@ function respostaJson(
 }
 
 
-export async function onRequestPost(context) {
+export async function onRequestPost(
+    context
+) {
+
+    /*
+     * O cookie deve ser apagado mesmo
+     * se alguma operação de banco falhar.
+     */
+
+    const cookie =
+        apagarCookieSessao(
+            context.request
+        );
+
 
     try {
 
         /*
-         * 1. Procura o token no cookie.
+         * 1. Obtemos o contexto ANTES
+         * de apagar a sessão.
+         */
+
+        const contextoAutenticado =
+            await obterContextoAutenticado(
+                context
+            );
+
+
+        /*
+         * 2. Se a sessão está válida,
+         * registramos o logout.
+         */
+
+        if (contextoAutenticado) {
+
+            try {
+
+                await registrarAuditoria(
+                    context,
+                    {
+                        evento:
+                            "LOGOUT",
+
+                        resultado:
+                            "SUCESSO",
+
+                        usuario:
+                            contextoAutenticado
+                                .usuario,
+
+                        sessao:
+                            contextoAutenticado
+                                .sessao,
+
+                        dispositivo:
+                            contextoAutenticado
+                                .dispositivo
+                    }
+                );
+
+            } catch (erroAuditoria) {
+
+                /*
+                 * Uma falha da auditoria
+                 * nunca deve impedir o usuário
+                 * de encerrar a sessão.
+                 */
+
+                console.error(
+                    "Erro ao registrar auditoria de logout:",
+                    erroAuditoria
+                );
+            }
+        }
+
+
+        /*
+         * 3. Obtém o token da sessão.
          */
 
         const token =
@@ -47,9 +131,7 @@ export async function onRequestPost(context) {
 
 
         /*
-         * 2. Se existe token,
-         * calcula seu hash e remove
-         * a sessão do banco.
+         * 4. Remove a sessão do banco.
          */
 
         if (token) {
@@ -64,32 +146,26 @@ export async function onRequestPost(context) {
                 .prepare(
                     `
                     DELETE FROM sessoes
+
                     WHERE token_hash = ?1
                     `
                 )
-                .bind(tokenHash)
+                .bind(
+                    tokenHash
+                )
                 .run();
         }
 
 
         /*
-         * 3. Remove o cookie do navegador.
-         */
-
-        const cookie =
-            apagarCookieSessao(
-                context.request
-            );
-
-
-        /*
-         * Mesmo que a sessão já não exista,
-         * consideramos o logout bem-sucedido.
+         * Mesmo que a sessão já tenha
+         * expirado, o logout é idempotente.
          */
 
         return respostaJson(
             {
                 sucesso: true,
+
                 mensagem:
                     "Sessão encerrada com sucesso."
             },
@@ -106,22 +182,12 @@ export async function onRequestPost(context) {
         );
 
 
-        /*
-         * Mesmo em caso de erro no banco,
-         * tentamos remover o cookie.
-         */
-
-        const cookie =
-            apagarCookieSessao(
-                context.request
-            );
-
-
         return respostaJson(
             {
                 sucesso: false,
+
                 mensagem:
-                    "Não foi possível encerrar completamente a sessão."
+                    "A sessão local foi encerrada, mas ocorreu um erro ao finalizar o logout no servidor."
             },
             500,
             cookie

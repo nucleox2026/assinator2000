@@ -1,11 +1,11 @@
 import {
     obterContextoAutenticado
-} from "../../_lib/auth.js";
+} from "../../../_lib/auth.js";
 
 
 import {
     registrarAuditoria
-} from "../../_lib/audit.js";
+} from "../../../_lib/audit.js";
 
 
 function respostaJson(
@@ -27,18 +27,15 @@ function respostaJson(
 }
 
 
-export async function onRequestGet(
+export async function onRequestPost(
     context
 ) {
 
     try {
 
         /*
-         * 1. Identifica:
-         *
-         * - colaborador
-         * - sessão
-         * - tablet
+         * 1. Identifica sessão,
+         * colaborador e tablet.
          */
 
         const contextoAutenticado =
@@ -60,14 +57,6 @@ export async function onRequestGet(
             );
         }
 
-
-        const usuario =
-            contextoAutenticado.usuario;
-
-
-        /*
-         * 2. Valida o ID recebido pela URL.
-         */
 
         const documentoId =
             Number(
@@ -95,8 +84,8 @@ export async function onRequestGet(
 
 
         /*
-         * 3. O documento precisa estar
-         * atribuído ao usuário autenticado.
+         * 2. Confirma que o documento está
+         * atribuído ao colaborador.
          */
 
         const documento =
@@ -107,12 +96,9 @@ export async function onRequestGet(
                         d.id,
                         d.codigo,
                         d.titulo,
-                        d.descricao,
-                        d.nome_arquivo,
                         d.versao,
 
                         du.status,
-                        du.atribuido_em,
                         du.visualizado_em,
                         du.leitura_concluida_em,
                         du.assinado_em
@@ -135,7 +121,9 @@ export async function onRequestGet(
                 )
                 .bind(
                     documentoId,
-                    usuario.id
+                    contextoAutenticado
+                        .usuario
+                        .id
                 )
                 .first();
 
@@ -155,75 +143,150 @@ export async function onRequestGet(
 
 
         /*
-         * Guardamos o estado antes
-         * da abertura.
+         * Para concluir a leitura,
+         * o documento precisa já ter
+         * sido aberto pelo colaborador.
          */
 
-        const statusAnterior =
-            documento.status;
+        if (!documento.visualizado_em) {
 
+            return respostaJson(
+                {
+                    sucesso: false,
 
-        const primeiraAbertura =
-            !documento.visualizado_em;
+                    mensagem:
+                        "O documento precisa ser aberto antes da conclusão da leitura."
+                },
+                409
+            );
+        }
 
 
         /*
-         * 4. Na primeira abertura:
-         *
-         * PENDENTE -> EM_LEITURA
-         *
-         * visualizado_em registra somente
-         * a primeira visualização.
+         * Documento já assinado não deve
+         * sofrer alteração de leitura.
          */
 
         if (
+            documento.assinado_em ||
             documento.status ===
-            "PENDENTE"
+                "ASSINADO"
         ) {
 
+            return respostaJson(
+                {
+                    sucesso: false,
+
+                    mensagem:
+                        "Este documento já foi assinado."
+                },
+                409
+            );
+        }
+
+
+        /*
+         * A operação é idempotente.
+         *
+         * Se a leitura já foi concluída,
+         * simplesmente informamos isso
+         * sem gerar outro evento.
+         */
+
+        if (
+            documento
+                .leitura_concluida_em
+        ) {
+
+            return respostaJson(
+                {
+                    sucesso: true,
+
+                    leituraConcluida:
+                        true,
+
+                    jaConcluida:
+                        true
+                }
+            );
+        }
+
+
+        /*
+         * 3. Marca a primeira conclusão.
+         */
+
+        const resultado =
             await context.env.DB
                 .prepare(
                     `
                     UPDATE documentos_usuarios
 
                     SET
-                        status =
-                            'EM_LEITURA',
+                        leitura_concluida_em =
+                            CURRENT_TIMESTAMP,
 
-                        visualizado_em =
-                            COALESCE(
-                                visualizado_em,
-                                CURRENT_TIMESTAMP
-                            )
+                        status =
+                            'EM_LEITURA'
 
                     WHERE
                         documento_id = ?1
 
                         AND usuario_id = ?2
+
+                        AND leitura_concluida_em
+                            IS NULL
+
+                        AND status !=
+                            'ASSINADO'
                     `
                 )
                 .bind(
                     documentoId,
-                    usuario.id
+
+                    contextoAutenticado
+                        .usuario
+                        .id
                 )
                 .run();
 
 
-            documento.status =
-                "EM_LEITURA";
+        /*
+         * Se outra requisição concluiu
+         * simultaneamente, não duplicamos
+         * a evidência.
+         */
+
+        if (
+            Number(
+                resultado.meta
+                    .changes || 0
+            ) === 0
+        ) {
+
+            return respostaJson(
+                {
+                    sucesso: true,
+
+                    leituraConcluida:
+                        true,
+
+                    jaConcluida:
+                        true
+                }
+            );
         }
 
 
         /*
-         * 5. Toda abertura válida fica
-         * registrada na auditoria.
+         * 4. Registra a evidência.
          */
 
         await registrarAuditoria(
             context,
             {
                 evento:
-                    "DOCUMENTO_ABERTO",
+                    "LEITURA_CONCLUIDA",
 
                 resultado:
                     "SUCESSO",
@@ -251,62 +314,24 @@ export async function onRequestGet(
                         documento.codigo,
 
                     versao:
-                        documento.versao,
-
-                    primeiraAbertura,
-
-                    statusAnterior,
-
-                    statusAtual:
-                        documento.status
+                        documento.versao
                 }
             }
         );
 
 
-        /*
-         * 6. Retorna somente os dados
-         * necessários ao frontend.
-         */
-
         return respostaJson(
             {
                 sucesso: true,
 
-                documento: {
-                    id:
-                        documento.id,
+                leituraConcluida:
+                    true,
 
-                    codigo:
-                        documento.codigo,
+                jaConcluida:
+                    false,
 
-                    titulo:
-                        documento.titulo,
-
-                    descricao:
-                        documento.descricao,
-
-                    nomeArquivo:
-                        documento.nome_arquivo,
-
-                    versao:
-                        documento.versao,
-
-                    status:
-                        documento.status,
-
-                    leituraConcluida:
-                        Boolean(
-                            documento
-                                .leitura_concluida_em
-                        ),
-
-                    assinado:
-                        Boolean(
-                            documento
-                                .assinado_em
-                        )
-                }
+                mensagem:
+                    "Leitura concluída com sucesso."
             }
         );
 
@@ -314,7 +339,7 @@ export async function onRequestGet(
     } catch (erro) {
 
         console.error(
-            "Erro ao carregar documento:",
+            "Erro ao concluir leitura:",
             erro
         );
 
@@ -324,7 +349,7 @@ export async function onRequestGet(
                 sucesso: false,
 
                 mensagem:
-                    "Não foi possível carregar o documento."
+                    "Não foi possível concluir a leitura."
             },
             500
         );
